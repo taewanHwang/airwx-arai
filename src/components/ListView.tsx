@@ -76,7 +76,7 @@ export const ListView = ({ entries, projects }: ListViewProps) => {
                     className="hover:bg-secondary hover:text-secondary-foreground"
                   >
                     <a
-                      href={entry.link}
+                      href="https://www.lgresearch.ai/"
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Go to original context"

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
 import { CalendarView } from '@/components/CalendarView';
 import { ListView } from '@/components/ListView';
 import { ChatbotPanel } from '@/components/ChatbotPanel';
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const projects = getUniqueProjects();
   const [isAddContextOpen, setIsAddContextOpen] = useState(false);
   const [contextUrl, setContextUrl] = useState('');
+  const { toast } = useToast();
 
   return (
     <div className="min-h-screen flex w-full bg-background">
@@ -101,7 +103,10 @@ const Dashboard = () => {
               </Button>
               <Button
                 onClick={() => {
-                  // Handle submission (currently just closes)
+                  toast({
+                    title: "Context processed successfully",
+                    description: "Your context has been added to the workspace.",
+                  });
                   setIsAddContextOpen(false);
                   setContextUrl('');
                 }}

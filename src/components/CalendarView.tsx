@@ -15,31 +15,64 @@ interface CalendarViewProps {
   entries: ContextEntry[];
 }
 
-// Generate consistent color for each unique entry ID
-const getEntryColor = (id: string): string => {
-  const colors = [
-    'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300',
-    'bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-300',
-    'bg-green-100 text-green-700 hover:bg-green-200 border-green-300',
-    'bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-300',
-    'bg-pink-100 text-pink-700 hover:bg-pink-200 border-pink-300',
-    'bg-teal-100 text-teal-700 hover:bg-teal-200 border-teal-300',
-    'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-300',
-    'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-300',
+// Generate consistent color tones for projects
+const getProjectColorGroup = (project: string): string[] => {
+  const colorGroups = [
+    // Blue tones for "Exaone Foundry 배포"
+    [
+      'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300',
+      'bg-blue-200 text-blue-800 hover:bg-blue-300 border-blue-400',
+      'bg-sky-100 text-sky-700 hover:bg-sky-200 border-sky-300',
+    ],
+    // Purple/Violet tones for "Exaone Foundry 개발"
+    [
+      'bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-300',
+      'bg-violet-100 text-violet-700 hover:bg-violet-200 border-violet-300',
+      'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-300',
+    ],
+    // Green tones for "팀 업무"
+    [
+      'bg-green-100 text-green-700 hover:bg-green-200 border-green-300',
+      'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-300',
+      'bg-teal-100 text-teal-700 hover:bg-teal-200 border-teal-300',
+    ],
+    // Orange/Amber tones for "개인"
+    [
+      'bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-300',
+      'bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-300',
+      'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-300',
+    ],
   ];
   
-  // Simple hash function to get consistent color index
+  // Hash project name to get consistent color group
   let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < project.length; i++) {
+    hash = project.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % colors.length;
-  return colors[index];
+  return colorGroups[Math.abs(hash) % colorGroups.length];
+};
+
+// Get color for specific entry based on project and entry ID
+const getEntryColor = (entry: ContextEntry, isPast: boolean): string => {
+  if (isPast) {
+    return 'bg-gray-200 text-gray-600 hover:bg-gray-300 border-gray-400 opacity-70';
+  }
+  
+  const colorGroup = getProjectColorGroup(entry.project);
+  
+  // Hash entry ID to get consistent color within project group
+  let hash = 0;
+  for (let i = 0; i < entry.id.length; i++) {
+    hash = entry.id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colorGroup.length;
+  return colorGroup[index];
 };
 
 export const CalendarView = ({ entries }: CalendarViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 0, 1)); // January 2025
   const [selectedEntry, setSelectedEntry] = useState<ContextEntry | null>(null);
+  const today = new Date(2025, 0, 10); // January 10, 2025
   
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -122,15 +155,18 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
               <>
                 <div className="text-sm font-medium text-foreground mb-1">{day}</div>
                 <div className="space-y-1">
-                  {getEntriesForDay(day).slice(0, 2).map(entry => (
-                    <div
-                      key={`${entry.id}-${day}`}
-                      className={`text-xs p-1.5 rounded border truncate transition-colors cursor-pointer ${getEntryColor(entry.id)}`}
-                      onClick={() => setSelectedEntry(entry)}
-                    >
-                      {entry.title}
-                    </div>
-                  ))}
+                  {getEntriesForDay(day).slice(0, 2).map(entry => {
+                    const isPast = entry.endDate < today;
+                    return (
+                      <div
+                        key={`${entry.id}-${day}`}
+                        className={`text-xs p-1.5 rounded border truncate transition-colors cursor-pointer ${getEntryColor(entry, isPast)}`}
+                        onClick={() => setSelectedEntry(entry)}
+                      >
+                        {entry.title}
+                      </div>
+                    );
+                  })}
                   {getEntriesForDay(day).length > 2 && (
                     <div className="text-xs text-muted-foreground pl-1.5">
                       +{getEntriesForDay(day).length - 2} more
@@ -176,7 +212,7 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
                   className="gap-2"
                 >
                   <a
-                    href={selectedEntry?.link}
+                    href="https://www.lgresearch.ai/"
                     target="_blank"
                     rel="noopener noreferrer"
                   >

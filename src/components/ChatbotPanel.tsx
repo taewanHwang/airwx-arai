@@ -91,9 +91,11 @@ export const ChatbotPanel = () => {
       </ScrollArea>
 
       <div className="p-4 border-t border-border bg-card">
-        <p className="text-xs text-muted-foreground mb-3 text-center">
-          (Chat responses are pre-set examples for this prototype.)
-        </p>
+        <div className="text-xs text-muted-foreground mb-3 space-y-1">
+          <p className="text-center font-medium">(Chat responses are pre-set examples for this prototype.)</p>
+          <p className="text-center">Try: "Exaone Foundry 프로젝트에서 방화벽 이슈에 대해서 마지막 결론이 뭐였지?"</p>
+          <p className="text-center">Then: "그 이슈 담당자는 누구였지?"</p>
+        </div>
         <div className="flex gap-2">
           <Input
             value={input}

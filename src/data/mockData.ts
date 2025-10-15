@@ -75,9 +75,9 @@ export const mockContextData: ContextEntry[] = [
     id: '8',
     title: '민규와 티타임',
     project: '팀 업무',
-    dateRange: '2025.01.17–01.25',
-    startDate: new Date(2025, 0, 17),
-    endDate: new Date(2025, 0, 25),
+    dateRange: '2025.01.15–01.16',
+    startDate: new Date(2025, 0, 15),
+    endDate: new Date(2025, 0, 16),
     link: 'https://notion.so/example8',
     summary: '민규 개인면담'
   },
