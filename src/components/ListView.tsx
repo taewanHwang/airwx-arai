@@ -20,9 +20,10 @@ interface ListViewProps {
 export const ListView = ({ entries, projects }: ListViewProps) => {
   const [selectedProject, setSelectedProject] = useState('All Projects');
 
-  const filteredEntries = selectedProject === 'All Projects'
+  const filteredEntries = (selectedProject === 'All Projects'
     ? entries
-    : entries.filter(entry => entry.project === selectedProject);
+    : entries.filter(entry => entry.project === selectedProject)
+  ).sort((a, b) => b.endDate.getTime() - a.endDate.getTime()); // Sort by end date descending
 
   return (
     <div className="h-full flex flex-col">

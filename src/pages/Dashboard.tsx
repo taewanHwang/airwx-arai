@@ -6,9 +6,20 @@ import { CalendarView } from '@/components/CalendarView';
 import { ListView } from '@/components/ListView';
 import { ChatbotPanel } from '@/components/ChatbotPanel';
 import { mockContextData, getUniqueProjects } from '@/data/mockData';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { X } from 'lucide-react';
 
 const Dashboard = () => {
   const projects = getUniqueProjects();
+  const [isAddContextOpen, setIsAddContextOpen] = useState(false);
+  const [contextUrl, setContextUrl] = useState('');
 
   return (
     <div className="min-h-screen flex w-full bg-background">
@@ -23,7 +34,7 @@ const Dashboard = () => {
                   <Search className="h-4 w-4" />
                   Search
                 </Button>
-                <Button className="gap-2">
+                <Button className="gap-2" onClick={() => setIsAddContextOpen(true)}>
                   <Plus className="h-4 w-4" />
                   Add Context
                 </Button>
@@ -54,6 +65,53 @@ const Dashboard = () => {
       <div className="w-[30%] min-w-[400px] max-w-[500px]">
         <ChatbotPanel />
       </div>
+
+      {/* Add Context Dialog */}
+      <Dialog open={isAddContextOpen} onOpenChange={setIsAddContextOpen}>
+        <DialogContent className="max-w-md">
+          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogClose>
+          <DialogHeader>
+            <DialogTitle>Add Context</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Paste your Notion, email, or Teams link here
+              </label>
+              <Input
+                type="url"
+                placeholder="https://..."
+                value={contextUrl}
+                onChange={(e) => setContextUrl(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAddContextOpen(false);
+                  setContextUrl('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  // Handle submission (currently just closes)
+                  setIsAddContextOpen(false);
+                  setContextUrl('');
+                }}
+              >
+                Process Context
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
