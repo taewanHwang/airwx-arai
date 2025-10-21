@@ -12,6 +12,7 @@ import {
   debugNotionContent,
   checkApiHealth
 } from '@/services/notion-api';
+import { extractMetadataFromNotionUrl } from '@/services/metadata-api';
 import { logger } from '@/utils/logger';
 
 const Index = () => {
@@ -21,6 +22,7 @@ const Index = () => {
   const [showResult, setShowResult] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [metadata, setMetadata] = useState<any>(null);
 
   const handleProcess = async () => {
     if (!link.trim()) return;
@@ -31,6 +33,7 @@ const Index = () => {
     setError(null);
     setShowResult(false);
     setDebugInfo(null);
+    setMetadata(null);
     setIsProcessing(true);
     
     console.log('📋 상태 초기화 완료');
@@ -42,22 +45,14 @@ const Index = () => {
         throw new Error('유효한 Notion URL이 아닙니다. Notion 페이지 또는 데이터베이스 URL을 입력해주세요.');
       }
 
-      // 페이지 ID 추출
-      const pageId = await extractPageIdFromUrl(link);
-      if (!pageId) {
-        throw new Error('URL에서 페이지 ID를 추출할 수 없습니다.');
-      }
-
-      console.log('🚀 Notion 페이지 처리 시작');
+      console.log('🚀 메타데이터 추출 처리 시작');
       console.log('📎 입력 URL:', link);
-      console.log('🆔 추출된 페이지 ID:', pageId);
 
-      // Notion API 호출
-      const pageData = await fetchNotionPage(pageId);
+      // 메타데이터 추출 API 호출
+      const extractedMetadata = await extractMetadataFromNotionUrl(link);
       
-      // 디버그 정보 출력 및 저장
-      const debug = debugNotionContent(pageData);
-      setDebugInfo(debug);
+      console.log('✅ 메타데이터 추출 성공:', extractedMetadata);
+      setMetadata(extractedMetadata);
       
       // 성공 결과 표시
       setShowResult(true);
@@ -117,7 +112,7 @@ const Index = () => {
               {isProcessing ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Processing your link…
+                  Extracting metadata with AI…
                 </>
               ) : (
                 <>
@@ -131,7 +126,7 @@ const Index = () => {
           {isProcessing && (
             <div className="mt-6 p-4 bg-accent/30 rounded-lg text-center animate-fade-in">
               <p className="text-sm text-muted-foreground">
-                Processing your link… extracting summary and tags…
+                Extracting metadata with Exaone AI… analyzing content and generating summary…
               </p>
             </div>
           )}
@@ -143,46 +138,43 @@ const Index = () => {
             </Alert>
           )}
 
-          {showResult && debugInfo && (
+          {showResult && metadata && (
             <div className="mt-6 space-y-4 animate-fade-in">
-              <div className="p-6 bg-primary/5 border-2 border-primary/20 rounded-lg space-y-3">
+              <div className="p-6 bg-primary/5 border-2 border-primary/20 rounded-lg space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="text-2xl">✅</div>
-                  <div className="flex-1 space-y-2">
+                  <div className="text-2xl">🤖</div>
+                  <div className="flex-1 space-y-3">
                     <p className="font-semibold text-foreground">
-                      Notion 페이지를 성공적으로 가져왔습니다!
+                      AI 메타데이터 추출 완료!
                     </p>
-                    <div className="space-y-1 text-sm">
-                      <p className="text-foreground">
-                        <span className="font-medium">제목:</span> {debugInfo.title}
-                      </p>
-                      <p className="text-muted-foreground">
-                        <span className="font-medium">페이지 ID:</span> {debugInfo.id}
-                      </p>
-                      <p className="text-muted-foreground">
-                        <span className="font-medium">생성일:</span> {new Date(debugInfo.createdTime).toLocaleString('ko-KR')}
-                      </p>
-                      <p className="text-muted-foreground">
-                        <span className="font-medium">수정일:</span> {new Date(debugInfo.lastEditedTime).toLocaleString('ko-KR')}
-                      </p>
-                      <p className="text-muted-foreground">
-                        <span className="font-medium">블록 수:</span> {debugInfo.blocksCount}개
-                      </p>
-                      <p className="text-muted-foreground">
-                        <span className="font-medium">텍스트 길이:</span> {debugInfo.textLength}자
-                      </p>
+                    
+                    <div className="space-y-3">
+                      <div className="p-3 bg-background/50 rounded-lg">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">제목</p>
+                        <p className="text-base font-semibold text-foreground">{metadata.title}</p>
+                      </div>
+                      
+                      <div className="p-3 bg-background/50 rounded-lg">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">요약</p>
+                        <p className="text-sm text-foreground leading-relaxed">{metadata.summary}</p>
+                      </div>
+                      
+                      <div className="p-3 bg-background/50 rounded-lg">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">주요 주제</p>
+                        <div className="flex flex-wrap gap-2">
+                          {metadata.topics.map((topic: string, index: number) => (
+                            <span 
+                              key={index}
+                              className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full font-medium"
+                            >
+                              {topic}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="p-4 bg-secondary/50 rounded-lg">
-                <p className="text-sm font-medium mb-2">디버그 정보 (콘솔 확인)</p>
-                <p className="text-xs text-muted-foreground font-mono">
-                  콘솔에서 상세한 디버그 정보를 확인하세요.
-                  <br />
-                  추출된 텍스트 미리보기: {debugInfo.fullText.substring(0, 100)}...
-                </p>
               </div>
 
               <Button
