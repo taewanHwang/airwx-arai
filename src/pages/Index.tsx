@@ -1,27 +1,73 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Link2, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { Link2, Sparkles, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  isValidNotionUrl, 
+  extractPageIdFromUrl, 
+  fetchNotionPage, 
+  debugNotionContent,
+  checkApiHealth
+} from '@/services/notion-api';
+import { logger } from '@/utils/logger';
 
 const Index = () => {
   const navigate = useNavigate();
   const [link, setLink] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     if (!link.trim()) return;
 
-    setIsProcessing(true);
+    console.log('🚀 handleProcess 시작', link);
+    
+    // 에러 및 결과 초기화
+    setError(null);
     setShowResult(false);
+    setDebugInfo(null);
+    setIsProcessing(true);
+    
+    console.log('📋 상태 초기화 완료');
 
-    // Simulate processing
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      // Notion URL 유효성 검증
+      const isValid = await isValidNotionUrl(link);
+      if (!isValid) {
+        throw new Error('유효한 Notion URL이 아닙니다. Notion 페이지 또는 데이터베이스 URL을 입력해주세요.');
+      }
+
+      // 페이지 ID 추출
+      const pageId = await extractPageIdFromUrl(link);
+      if (!pageId) {
+        throw new Error('URL에서 페이지 ID를 추출할 수 없습니다.');
+      }
+
+      console.log('🚀 Notion 페이지 처리 시작');
+      console.log('📎 입력 URL:', link);
+      console.log('🆔 추출된 페이지 ID:', pageId);
+
+      // Notion API 호출
+      const pageData = await fetchNotionPage(pageId);
+      
+      // 디버그 정보 출력 및 저장
+      const debug = debugNotionContent(pageData);
+      setDebugInfo(debug);
+      
+      // 성공 결과 표시
       setShowResult(true);
-    }, 2000);
+      
+    } catch (err: any) {
+      console.error('❌ 처리 중 오류 발생:', err);
+      setError(err.message || '알 수 없는 오류가 발생했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -90,28 +136,53 @@ const Index = () => {
             </div>
           )}
 
-          {showResult && (
+          {error && (
+            <Alert variant="destructive" className="mt-6 animate-fade-in">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {showResult && debugInfo && (
             <div className="mt-6 space-y-4 animate-fade-in">
               <div className="p-6 bg-primary/5 border-2 border-primary/20 rounded-lg space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="text-2xl">✅</div>
                   <div className="flex-1 space-y-2">
                     <p className="font-semibold text-foreground">
-                      ARAI has added this to your workspace.
+                      Notion 페이지를 성공적으로 가져왔습니다!
                     </p>
                     <div className="space-y-1 text-sm">
                       <p className="text-foreground">
-                        <span className="font-medium">Title:</span> Firewall Exception Issue – Exaone foundry Project
+                        <span className="font-medium">제목:</span> {debugInfo.title}
                       </p>
                       <p className="text-muted-foreground">
-                        <span className="font-medium">Summary:</span> Discussed firewall configuration for LG Electronic AX Division deployment.
+                        <span className="font-medium">페이지 ID:</span> {debugInfo.id}
                       </p>
                       <p className="text-muted-foreground">
-                        <span className="font-medium">Tags:</span> [Project: Exaone Foundry] [From: 2025.01.10] [To: 2025.01.15]
+                        <span className="font-medium">생성일:</span> {new Date(debugInfo.createdTime).toLocaleString('ko-KR')}
+                      </p>
+                      <p className="text-muted-foreground">
+                        <span className="font-medium">수정일:</span> {new Date(debugInfo.lastEditedTime).toLocaleString('ko-KR')}
+                      </p>
+                      <p className="text-muted-foreground">
+                        <span className="font-medium">블록 수:</span> {debugInfo.blocksCount}개
+                      </p>
+                      <p className="text-muted-foreground">
+                        <span className="font-medium">텍스트 길이:</span> {debugInfo.textLength}자
                       </p>
                     </div>
                   </div>
                 </div>
+              </div>
+              
+              <div className="p-4 bg-secondary/50 rounded-lg">
+                <p className="text-sm font-medium mb-2">디버그 정보 (콘솔 확인)</p>
+                <p className="text-xs text-muted-foreground font-mono">
+                  콘솔에서 상세한 디버그 정보를 확인하세요.
+                  <br />
+                  추출된 텍스트 미리보기: {debugInfo.fullText.substring(0, 100)}...
+                </p>
               </div>
 
               <Button
@@ -119,7 +190,7 @@ const Index = () => {
                 variant="outline"
                 className="w-full gap-2"
               >
-                View in Dashboard
+                대시보드로 이동 (테스트)
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

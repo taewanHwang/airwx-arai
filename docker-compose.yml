@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  arai-app:
+    build: .
+    container_name: arai-container
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    networks:
+      - arai-network
+
+networks:
+  arai-network:
+    driver: bridge

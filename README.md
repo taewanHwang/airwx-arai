@@ -76,6 +76,66 @@ npm run preview
 
 ## 배포
 
+### Docker를 사용한 배포
+
+#### 단일 컨테이너 실행
+
+```bash
+# 1. Docker 이미지 빌드
+docker build -t arai-app .
+
+# 2. 컨테이너 실행 (포트 3000)
+docker run -d -p 3000:3000 --name arai-container arai-app
+
+# 3. 컨테이너 중지
+docker stop arai-container
+
+# 4. 컨테이너 삭제
+docker rm arai-container
+```
+
+#### Docker Compose 사용
+
+```bash
+# 1. 컨테이너 빌드 및 실행
+docker-compose up -d
+
+# 2. 다른 포트로 실행 (예: 3001)
+PORT=3001 docker-compose up -d
+
+# 3. 컨테이너 중지
+docker-compose down
+```
+
+#### 베타 테스터를 위한 다중 컨테이너 배포
+
+여러 개의 독립적인 컨테이너를 다른 포트로 실행:
+
+```bash
+# 베타 테스터 1 (포트 3001)
+docker run -d -p 3001:3000 --name arai-beta1 arai-app
+
+# 베타 테스터 2 (포트 3002)
+docker run -d -p 3002:3000 --name arai-beta2 arai-app
+
+# 베타 테스터 3 (포트 3003)
+docker run -d -p 3003:3000 --name arai-beta3 arai-app
+
+# ... 최대 10개까지 포트를 변경하여 실행
+```
+
+또는 다중 컨테이너 스크립트 사용:
+
+```bash
+# deploy-beta.sh 스크립트 실행 (10개 컨테이너 자동 배포)
+#!/bin/bash
+for i in {1..10}; do
+  port=$((3000 + i))
+  docker run -d -p ${port}:3000 --name arai-beta${i} arai-app
+  echo "베타 테스터 ${i} 컨테이너 시작 (포트: ${port})"
+done
+```
+
 ### Lovable을 통한 배포
 
 1. [Lovable 프로젝트](https://lovable.dev/projects/d1ecdc9e-e497-48a1-b83d-e36fef5087f9) 접속
