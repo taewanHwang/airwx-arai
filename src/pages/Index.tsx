@@ -172,19 +172,46 @@ const Index = () => {
                           ))}
                         </div>
                       </div>
+                      
+                      {metadata.contextId && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-sm font-medium text-green-800 mb-1">저장 완료</p>
+                          <p className="text-xs text-green-600 font-mono">
+                            ID: {metadata.contextId}
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            이 컨텍스트는 데이터베이스에 저장되어 대시보드에서 확인할 수 있습니다.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <Button
-                onClick={() => navigate('/dashboard')}
-                variant="outline"
-                className="w-full gap-2"
-              >
-                대시보드로 이동 (테스트)
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => navigate('/dashboard')}
+                  variant="outline"
+                  className="flex-1 gap-2"
+                >
+                  저장된 컨텍스트 보기
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    setLink('');
+                    setShowResult(false);
+                    setMetadata(null);
+                    setError(null);
+                  }}
+                  variant="secondary"
+                  className="gap-2"
+                >
+                  새로 분석하기
+                </Button>
+              </div>
             </div>
           )}
         </Card>

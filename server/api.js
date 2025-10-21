@@ -2,6 +2,15 @@ import express from 'express';
 import cors from 'cors';
 import { Client } from '@notionhq/client';
 import fetch from 'node-fetch';
+import crypto from 'crypto';
+import {
+  saveContext,
+  getAllContexts,
+  getContextById,
+  deleteContext,
+  searchContexts,
+  getStats
+} from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -389,9 +398,32 @@ app.post('/api/metadata/extract', async (req, res) => {
     const processingTime = Date.now() - startTime;
     console.log(`✅ 메타데이터 추출 성공: ${processingTime}ms`);
 
+    // 컨텍스트 데이터베이스에 저장
+    const contextId = crypto.randomUUID();
+    const contextData = {
+      id: contextId,
+      title: metadata.title,
+      summary: metadata.summary,
+      topics: metadata.topics,
+      original_url: notionUrl,
+      notion_content: limitedContent,
+      processing_time: processingTime
+    };
+
+    try {
+      await saveContext(contextData);
+      console.log(`💾 컨텍스트 저장 완료: ${contextId}`);
+    } catch (dbError) {
+      console.error('데이터베이스 저장 오류:', dbError);
+      // DB 저장 실패해도 메타데이터는 반환
+    }
+
     res.json({
       success: true,
-      data: metadata,
+      data: {
+        ...metadata,
+        contextId // 저장된 컨텍스트 ID 포함
+      },
       processingTime
     });
 
@@ -419,6 +451,105 @@ app.post('/api/metadata/extract', async (req, res) => {
       success: false,
       error: errorMessage,
       processingTime
+    });
+  }
+});
+
+// 컨텍스트 목록 조회
+app.get('/api/contexts', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, search } = req.query;
+    
+    let contexts;
+    if (search) {
+      contexts = await searchContexts(search, parseInt(limit));
+    } else {
+      contexts = await getAllContexts(parseInt(limit), parseInt(offset));
+    }
+
+    res.json({
+      success: true,
+      data: contexts,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasSearch: !!search
+      }
+    });
+  } catch (error) {
+    console.error('컨텍스트 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: '컨텍스트 목록을 불러오는데 실패했습니다'
+    });
+  }
+});
+
+// 특정 컨텍스트 조회
+app.get('/api/contexts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const context = await getContextById(id);
+
+    if (!context) {
+      return res.status(404).json({
+        success: false,
+        error: '컨텍스트를 찾을 수 없습니다'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: context
+    });
+  } catch (error) {
+    console.error('컨텍스트 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: '컨텍스트를 불러오는데 실패했습니다'
+    });
+  }
+});
+
+// 컨텍스트 삭제
+app.delete('/api/contexts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await deleteContext(id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: '삭제할 컨텍스트를 찾을 수 없습니다'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '컨텍스트가 삭제되었습니다'
+    });
+  } catch (error) {
+    console.error('컨텍스트 삭제 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: '컨텍스트 삭제에 실패했습니다'
+    });
+  }
+});
+
+// 데이터베이스 통계
+app.get('/api/contexts/stats', async (req, res) => {
+  try {
+    const stats = await getStats();
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('통계 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: '통계를 불러오는데 실패했습니다'
     });
   }
 });
