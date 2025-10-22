@@ -45,7 +45,27 @@ src/
 
 ### 필수 요구사항
 
-- Node.js & npm ([nvm으로 설치](https://github.com/nvm-sh/nvm#installing-and-updating))
+- Node.js 18+ & npm ([nvm으로 설치](https://github.com/nvm-sh/nvm#installing-and-updating))
+- Docker & Docker Compose (프로덕션 배포용)
+- Python 3.8+ (테스트 스크립트용, 선택사항)
+
+### 환경 변수 설정
+
+`.env` 파일을 프로젝트 루트에 생성하고 다음 내용을 추가:
+
+```bash
+# Notion API Configuration
+NOTION_API_KEY=your_notion_api_key_here
+NOTION_VERSION=2022-06-28
+
+# Exaone LLM API Configuration
+EXAONE_API_KEY=your_exaone_api_key_here
+EXAONE_API_URL=https://api.lgresearch.ai
+
+# Optional: Other LLM APIs
+# OPENAI_API_KEY=your_openai_api_key_here
+# ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
 
 ### 설치 및 실행
 
@@ -57,7 +77,7 @@ cd airwx-arai
 # 2. 의존성 설치
 npm install
 
-# 3. 개발 서버 실행 (포트 8081)
+# 3. 개발 서버 실행 (포트 8080)
 npm run dev
 
 # 4. 프로덕션 빌드
@@ -69,42 +89,104 @@ npm run preview
 
 ### 개발 명령어
 
-- `npm run dev` - 개발 서버 실행 (http://localhost:8081)
+- `npm run dev` - 개발 서버 실행 (http://localhost:8080)
 - `npm run build` - 프로덕션 빌드 생성
 - `npm run lint` - ESLint 검사 실행
 - `npm run preview` - 빌드된 앱 로컬 미리보기
 
 ## 배포
 
-### Docker를 사용한 배포
+### Docker를 사용한 전체 시스템 배포
 
-#### 단일 컨테이너 실행
+ARAI는 프론트엔드(포트 3000)와 백엔드 API(포트 3001)가 함께 실행되는 통합 시스템입니다.
+
+#### 🚀 빠른 시작 (Docker Compose 권장)
+
+```bash
+# 1. 환경 변수 파일 확인 (.env 파일이 있어야 함)
+cat .env
+
+# 2. Docker Compose로 실행 (빌드 + 실행)
+docker-compose up -d --build
+
+# 3. 서비스 확인
+# - 프론트엔드: http://localhost:3000
+# - 백엔드 API: http://localhost:3001/api/health
+```
+
+#### 🔄 재시작 가이드
+
+```bash
+# 1. 기존 컨테이너 중지 및 제거
+docker-compose down
+
+# 2. 볼륨 데이터 유지하며 재시작
+docker-compose up -d --build
+
+# 3. 볼륨 데이터까지 완전 초기화 후 재시작 (주의!)
+docker-compose down -v
+docker-compose up -d --build
+```
+
+#### 수동 실행 (Docker run 사용)
 
 ```bash
 # 1. Docker 이미지 빌드
 docker build -t arai-app .
 
-# 2. 컨테이너 실행 (포트 3000)
-docker run -d -p 3000:3000 --name arai-container arai-app
+# 2. 컨테이너 실행 (환경변수 파일 포함, 두 포트 모두 매핑)
+docker run -d \
+  -p 3000:3000 \
+  -p 3001:3001 \
+  --name arai-container \
+  --env-file .env \
+  -v arai-data:/app/data \
+  arai-app
 
-# 3. 컨테이너 중지
+# 3. 컨테이너 상태 확인
+docker ps | grep arai-container
+docker logs -f arai-container
+
+# 4. 컨테이너 재시작
+docker restart arai-container
+
+# 5. 컨테이너 중지 및 제거
 docker stop arai-container
-
-# 4. 컨테이너 삭제
 docker rm arai-container
 ```
 
-#### Docker Compose 사용
+#### 🔍 문제 해결
 
 ```bash
-# 1. 컨테이너 빌드 및 실행
-docker-compose up -d
+# 로그 확인
+docker logs -f arai-container
 
-# 2. 다른 포트로 실행 (예: 3001)
-PORT=3001 docker-compose up -d
+# API 서버 상태 확인
+curl http://localhost:3001/api/health
 
-# 3. 컨테이너 중지
-docker-compose down
+# 프로세스 확인
+docker exec arai-container ps aux | grep node
+
+# 데이터베이스 파일 확인
+docker exec arai-container ls -la /app/data/
+
+# 환경 변수 확인
+docker exec arai-container env | grep -E 'NOTION|EXAONE'
+```
+
+#### 📊 데이터 영속성
+
+SQLite 데이터베이스는 Docker 볼륨 `arai-data`에 저장되어 컨테이너 재시작 시에도 유지됩니다:
+
+```bash
+# 볼륨 확인
+docker volume ls | grep arai
+
+# 볼륨 상세 정보
+docker volume inspect arai-data
+
+# 데이터 백업 (호스트로 복사)
+docker cp arai-container:/app/data/arai.db ./backup-arai.db
 ```
 
 #### 베타 테스터를 위한 다중 컨테이너 배포
@@ -164,19 +246,45 @@ npm run build
 
 ## 주요 파일 설명
 
+### 프론트엔드
 - `App.tsx` - 애플리케이션 라우팅 및 프로바이더 설정
-- `vite.config.ts` - Vite 빌드 설정 (포트 8081)
+- `vite.config.ts` - Vite 빌드 설정 (포트 8080)
 - `tsconfig.json` - TypeScript 설정 (경로 별칭 `@/` 포함)
+- `src/services/notion-api.ts` - Notion API 클라이언트
+- `src/services/metadata-api.ts` - 메타데이터 추출 API 클라이언트
+- `src/services/context-api.ts` - 컨텍스트 관리 API 클라이언트
+
+### 백엔드
+- `server/api.js` - Express.js 기반 백엔드 서버
+- `server/database.js` - SQLite 데이터베이스 관리
+- `data/arai.db` - SQLite 데이터베이스 파일 (자동 생성)
+
+### 설정 및 문서
+- `.env` - 환경 변수 설정 (API 키)
+- `docker-compose.yml` - Docker Compose 설정
+- `Dockerfile` - Docker 이미지 빌드 설정
 - `CLAUDE.md` - Claude AI 코드 어시스턴트용 가이드라인
-- `task.md` - 프로젝트 작업 계획 문서
+- `todo.md` - 프로젝트 개발 진행 상황
 
-## 현재 제한사항
+## 주요 기능 상태
 
-- 백엔드 통합 없음 (모든 데이터는 목업)
-- 실제 API 호출 없음 (컨텍스트 처리는 시뮬레이션)
-- 챗봇 기능 제한 (사전 프로그래밍된 응답만 제공)
-- 사용자 인증 없음
-- 데이터 영속성 없음 (새로고침 시 초기화)
+### ✅ 구현 완료
+- **Notion API 연동**: URL에서 페이지 컨텐츠 추출
+- **Exaone AI 연동**: LLM을 통한 메타데이터 자동 추출
+- **SQLite 데이터베이스**: 컨텍스트 저장 및 관리
+- **백엔드 API 서버**: Express.js 기반 RESTful API
+- **Docker 배포 환경**: 컨테이너 기반 배포
+- **데이터 영속성**: Docker 볼륨을 통한 DB 유지
+
+### 🚧 개발 중
+- **대시보드 페이지**: 저장된 컨텍스트 목록 표시
+- **검색 기능**: 컨텍스트 검색 및 필터링
+- **AI 챗봇**: 컨텍스트 기반 질의응답
+
+### ⏳ 계획 중
+- **사용자 인증**: 다중 사용자 지원
+- **팀 협업 기능**: 컨텍스트 공유
+- **더 많은 소스 지원**: 이메일, Teams, Slack 등
 
 ## 라이선스
 

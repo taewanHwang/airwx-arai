@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # 베타 테스터 1
+  arai-beta1:
+    image: arai-app:latest
+    container_name: arai-beta1
+    ports:
+      - "3001:3000"
+      - "3101:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - INSTANCE_ID=beta1
+    volumes:
+      - arai-data-beta1:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - arai-network
+
+  # 베타 테스터 2
+  arai-beta2:
+    image: arai-app:latest
+    container_name: arai-beta2
+    ports:
+      - "3002:3000"
+      - "3102:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - INSTANCE_ID=beta2
+    volumes:
+      - arai-data-beta2:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - arai-network
+
+  # 베타 테스터 3
+  arai-beta3:
+    image: arai-app:latest
+    container_name: arai-beta3
+    ports:
+      - "3003:3000"
+      - "3103:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - INSTANCE_ID=beta3
+    volumes:
+      - arai-data-beta3:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - arai-network
+
+volumes:
+  arai-data-beta1:
+    driver: local
+  arai-data-beta2:
+    driver: local
+  arai-data-beta3:
+    driver: local
+
+networks:
+  arai-network:
+    driver: bridge

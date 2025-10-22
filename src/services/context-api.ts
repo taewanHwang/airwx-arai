@@ -45,6 +45,13 @@ export interface ContextStatsResponse {
   error?: string;
 }
 
+export interface ClearAllResponse {
+  success: boolean;
+  message?: string;
+  deletedCount?: number;
+  error?: string;
+}
+
 // 컨텍스트 목록 조회
 export async function getContexts(
   limit: number = 50,
@@ -192,6 +199,38 @@ export async function getContextStats(): Promise<ContextStats> {
     }
   } catch (error: any) {
     logger.error('컨텍스트 통계 조회 API 호출 중 오류 발생', {
+      error: error.message
+    });
+    throw error;
+  }
+}
+
+// 모든 컨텍스트 초기화 (DB 클리어)
+export async function clearAllContexts(): Promise<number> {
+  try {
+    logger.info('🗑️ 모든 컨텍스트 초기화 요청');
+
+    const response = await fetch(`${API_BASE_URL}/api/contexts/clear-all`, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result: ClearAllResponse = await response.json();
+
+    if (result.success) {
+      const deletedCount = result.deletedCount || 0;
+      logger.info('✅ 모든 컨텍스트 초기화 성공', { deletedCount });
+      return deletedCount;
+    } else {
+      const errorMessage = result.error || '데이터베이스 초기화에 실패했습니다';
+      logger.error('❌ 모든 컨텍스트 초기화 실패', { error: errorMessage });
+      throw new Error(errorMessage);
+    }
+  } catch (error: any) {
+    logger.error('모든 컨텍스트 초기화 API 호출 중 오류 발생', {
       error: error.message
     });
     throw error;

@@ -1,10 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Link2, Sparkles, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Link2, Sparkles, ArrowRight, Loader2, AlertCircle, Trash2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   isValidNotionUrl, 
   extractPageIdFromUrl, 
@@ -13,6 +24,7 @@ import {
   checkApiHealth
 } from '@/services/notion-api';
 import { extractMetadataFromNotionUrl } from '@/services/metadata-api';
+import { clearAllContexts } from '@/services/context-api';
 import { logger } from '@/utils/logger';
 
 const Index = () => {
@@ -23,6 +35,7 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [metadata, setMetadata] = useState<any>(null);
+  const [isClearingDb, setIsClearingDb] = useState(false);
 
   const handleProcess = async () => {
     if (!link.trim()) return;
@@ -65,8 +78,84 @@ const Index = () => {
     }
   };
 
+  const handleClearDatabase = async () => {
+    setIsClearingDb(true);
+    try {
+      const deletedCount = await clearAllContexts();
+      setError(null);
+      // 성공 메시지를 error state에 임시로 표시 (성공용 state가 없으므로)
+      setError(`✅ 데이터베이스 초기화 완료! ${deletedCount}개의 컨텍스트가 삭제되었습니다.`);
+      
+      // 3초 후 메시지 제거
+      setTimeout(() => {
+        setError(null);
+      }, 3000);
+      
+      logger.info('데이터베이스 초기화 완료', { deletedCount });
+    } catch (err: any) {
+      console.error('❌ DB 초기화 중 오류 발생:', err);
+      setError(`DB 초기화 실패: ${err.message}`);
+    } finally {
+      setIsClearingDb(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-accent/20 to-background p-4">
+      {/* 설정 버튼 (우측 상단) */}
+      <div className="fixed top-4 right-4 z-10">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 bg-background/80 backdrop-blur-sm"
+              disabled={isClearingDb}
+            >
+              {isClearingDb ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Settings className="h-4 w-4" />
+              )}
+              설정
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Trash2 className="h-5 w-5 text-destructive" />
+                데이터베이스 초기화
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                모든 저장된 컨텍스트를 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+                <br />
+                <span className="text-destructive font-medium">정말로 계속하시겠습니까?</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleClearDatabase}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isClearingDb}
+              >
+                {isClearingDb ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    삭제 중...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    모든 데이터 삭제
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
       <div className="w-full max-w-2xl">
         <div className="text-center mb-12 animate-fade-in">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-6">

@@ -9,7 +9,8 @@ import {
   getContextById,
   deleteContext,
   searchContexts,
-  getStats
+  getStats,
+  clearAllContexts
 } from './database.js';
 
 const app = express();
@@ -511,7 +512,45 @@ app.get('/api/contexts/:id', async (req, res) => {
   }
 });
 
-// 컨텍스트 삭제
+// 모든 컨텍스트 초기화 (DB 클리어) - 더 구체적인 라우트를 먼저 정의
+app.delete('/api/contexts/clear-all', async (req, res) => {
+  try {
+    const result = await clearAllContexts();
+    
+    res.json({
+      success: true,
+      message: '모든 컨텍스트가 삭제되었습니다',
+      deletedCount: result.deletedCount
+    });
+    
+    console.log(`🗑️ DB 초기화 완료: ${result.deletedCount}개 컨텍스트 삭제`);
+  } catch (error) {
+    console.error('DB 초기화 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: '데이터베이스 초기화에 실패했습니다'
+    });
+  }
+});
+
+// 데이터베이스 통계
+app.get('/api/contexts/stats', async (req, res) => {
+  try {
+    const stats = await getStats();
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('통계 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: '통계를 불러오는데 실패했습니다'
+    });
+  }
+});
+
+// 컨텍스트 삭제 - 일반적인 파라미터 라우트는 나중에 정의
 app.delete('/api/contexts/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -533,23 +572,6 @@ app.delete('/api/contexts/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: '컨텍스트 삭제에 실패했습니다'
-    });
-  }
-});
-
-// 데이터베이스 통계
-app.get('/api/contexts/stats', async (req, res) => {
-  try {
-    const stats = await getStats();
-    res.json({
-      success: true,
-      data: stats
-    });
-  } catch (error) {
-    console.error('통계 조회 오류:', error);
-    res.status(500).json({
-      success: false,
-      error: '통계를 불러오는데 실패했습니다'
     });
   }
 });

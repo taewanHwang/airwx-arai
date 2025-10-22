@@ -191,6 +191,32 @@ async function getStats() {
   }
 }
 
+// 모든 컨텍스트 삭제 (DB 초기화)
+async function clearAllContexts() {
+  try {
+    // 먼저 현재 레코드 수를 확인
+    const countBefore = await dbGet('SELECT COUNT(*) as count FROM contexts');
+    const totalCount = countBefore.count;
+    
+    // 삭제 실행
+    const result = await dbRun('DELETE FROM contexts');
+    console.log('🗑️ 모든 컨텍스트가 삭제되었습니다');
+    
+    // 삭제 후 레코드 수 확인
+    const countAfter = await dbGet('SELECT COUNT(*) as count FROM contexts');
+    const remainingCount = countAfter.count;
+    
+    const deletedCount = totalCount - remainingCount;
+    
+    console.log(`📊 삭제 통계: 전체 ${totalCount}개 → 남은 ${remainingCount}개 → 삭제된 ${deletedCount}개`);
+    
+    return { deletedCount };
+  } catch (error) {
+    console.error('❌ 컨텍스트 초기화 오류:', error);
+    throw error;
+  }
+}
+
 // 앱 종료 시 데이터베이스 연결 정리
 process.on('exit', () => db.close());
 process.on('SIGINT', () => {
@@ -208,5 +234,6 @@ export {
   getContextById,
   deleteContext,
   searchContexts,
-  getStats
+  getStats,
+  clearAllContexts
 };
