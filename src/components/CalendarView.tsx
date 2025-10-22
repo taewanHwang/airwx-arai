@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ContextEntry } from '@/services/context-api';
+import { ContextEntry, deleteContext } from '@/services/context-api';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -10,9 +11,21 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface CalendarViewProps {
   entries: ContextEntry[];
+  onRefresh?: () => void;
 }
 
 // Generate consistent color tones for projects
@@ -71,10 +84,40 @@ const getEntryColor = (entry: ContextEntry, isPast: boolean): string => {
   return colorGroup[index];
 };
 
-export const CalendarView = ({ entries }: CalendarViewProps) => {
+export const CalendarView = ({ entries, onRefresh }: CalendarViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date()); // Current date
   const [selectedEntry, setSelectedEntry] = useState<ContextEntry | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { toast } = useToast();
   const today = new Date();
+
+  const handleDeleteContext = async (id: string, title: string) => {
+    setDeletingId(id);
+    try {
+      await deleteContext(id);
+      toast({
+        title: "컨텍스트 삭제 완료",
+        description: `"${title}"이(가) 성공적으로 삭제되었습니다.`,
+      });
+      
+      // 다이얼로그 닫기
+      setSelectedEntry(null);
+      
+      // 데이터 새로고침
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error: any) {
+      console.error('삭제 오류:', error);
+      toast({
+        title: "삭제 실패",
+        description: error.message || "컨텍스트 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
   
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -209,8 +252,8 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
               <p className="mt-1 text-foreground leading-relaxed">{selectedEntry?.summary}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">원본 링크</label>
-              <div className="mt-1">
+              <label className="text-sm font-medium text-muted-foreground">작업</label>
+              <div className="mt-1 flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -226,6 +269,45 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
                     원본 보기
                   </a>
                 </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      disabled={deletingId === selectedEntry?.id}
+                    >
+                      {deletingId === selectedEntry?.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                      삭제
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>컨텍스트 삭제</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        정말로 "{selectedEntry?.title}"을(를) 삭제하시겠습니까?
+                        <br />
+                        <span className="text-destructive font-medium">
+                          이 작업은 되돌릴 수 없습니다.
+                        </span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>취소</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => selectedEntry && handleDeleteContext(selectedEntry.id, selectedEntry.title)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        삭제
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>

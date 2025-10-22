@@ -225,7 +225,7 @@ const Index = () => {
           {isProcessing && (
             <div className="mt-6 p-4 bg-accent/30 rounded-lg text-center animate-fade-in">
               <p className="text-sm text-muted-foreground">
-                Extracting metadata with Exaone AI… analyzing content and generating summary…
+                Exaone AI가 열일하고 있어요… 콘텐츠를 읽고 요약을 생성하는 중입니다✨
               </p>
             </div>
           )}

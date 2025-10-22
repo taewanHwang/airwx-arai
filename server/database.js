@@ -133,12 +133,24 @@ async function getContextById(id) {
 
 // 컨텍스트 삭제
 async function deleteContext(id) {
-  const query = 'DELETE FROM contexts WHERE id = ?';
-
   try {
-    const result = await dbRun(query, id);
+    // 먼저 컨텍스트가 존재하는지 확인
+    const existing = await dbGet('SELECT id FROM contexts WHERE id = ?', id);
+    if (!existing) {
+      console.log(`❌ 컨텍스트를 찾을 수 없음: ${id}`);
+      return false;
+    }
+
+    // 삭제 실행
+    const result = await dbRun('DELETE FROM contexts WHERE id = ?', id);
     console.log(`✅ 컨텍스트 삭제 완료: ${id}`);
-    return result.changes > 0;
+    
+    // 삭제 후 재확인
+    const stillExists = await dbGet('SELECT id FROM contexts WHERE id = ?', id);
+    const deleted = !stillExists;
+    
+    console.log(`📊 삭제 결과: ${deleted ? '성공' : '실패'}`);
+    return deleted;
   } catch (error) {
     console.error('❌ 컨텍스트 삭제 오류:', error);
     throw error;

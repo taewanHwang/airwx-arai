@@ -9,23 +9,12 @@ import { ListView } from '@/components/ListView';
 import { ChatbotPanel } from '@/components/ChatbotPanel';
 import { getContexts, getContextStats, type ContextEntry } from '@/services/context-api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { X } from 'lucide-react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [contexts, setContexts] = useState<ContextEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAddContextOpen, setIsAddContextOpen] = useState(false);
-  const [contextUrl, setContextUrl] = useState('');
   const [stats, setStats] = useState<any>(null);
   const { toast } = useToast();
 
@@ -107,9 +96,9 @@ const Dashboard = () => {
                   <Search className="h-4 w-4" />
                   Search
                 </Button>
-                <Button className="gap-2" onClick={() => setIsAddContextOpen(true)}>
+                <Button className="gap-2" onClick={() => navigate('/')}>
                   <Plus className="h-4 w-4" />
-                  Add Context
+                  컨텍스트 추가
                 </Button>
               </div>
             </div>
@@ -143,7 +132,7 @@ const Dashboard = () => {
               <p className="text-muted-foreground mb-4">
                 첫 번째 컨텍스트를 추가해보세요
               </p>
-              <Button className="gap-2" onClick={() => setIsAddContextOpen(true)}>
+              <Button className="gap-2" onClick={() => navigate('/')}>
                 <Plus className="h-4 w-4" />
                 컨텍스트 추가하기
               </Button>
@@ -161,7 +150,7 @@ const Dashboard = () => {
               </TabsContent>
               
               <TabsContent value="calendar" className="flex-1 mt-0">
-                <CalendarView entries={contexts} />
+                <CalendarView entries={contexts} onRefresh={loadContexts} />
               </TabsContent>
             </Tabs>
           )}
@@ -172,56 +161,6 @@ const Dashboard = () => {
       <div className="w-[30%] min-w-[400px] max-w-[500px]">
         <ChatbotPanel />
       </div>
-
-      {/* Add Context Dialog */}
-      <Dialog open={isAddContextOpen} onOpenChange={setIsAddContextOpen}>
-        <DialogContent className="max-w-md">
-          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
-          <DialogHeader>
-            <DialogTitle>Add Context</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
-                Paste your Notion, email, or Teams link here
-              </label>
-              <Input
-                type="url"
-                placeholder="https://..."
-                value={contextUrl}
-                onChange={(e) => setContextUrl(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddContextOpen(false);
-                  setContextUrl('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  toast({
-                    title: "Context processed successfully",
-                    description: "Your context has been added to the workspace.",
-                  });
-                  setIsAddContextOpen(false);
-                  setContextUrl('');
-                }}
-              >
-                Process Context
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

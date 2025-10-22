@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ContextEntry } from '@/services/context-api';
+import { ContextEntry, deleteContext } from '@/services/context-api';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Trash2 } from 'lucide-react';
+import { ExternalLink, Trash2, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import {
   Table,
   TableBody,
@@ -11,6 +12,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ListViewProps {
   entries: ContextEntry[];
@@ -20,6 +32,33 @@ interface ListViewProps {
 
 export const ListView = ({ entries, projects, onRefresh }: ListViewProps) => {
   const [selectedProject, setSelectedProject] = useState('All Projects');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleDeleteContext = async (id: string, title: string) => {
+    setDeletingId(id);
+    try {
+      await deleteContext(id);
+      toast({
+        title: "컨텍스트 삭제 완료",
+        description: `"${title}"이(가) 성공적으로 삭제되었습니다.`,
+      });
+      
+      // 데이터 새로고침
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error: any) {
+      console.error('삭제 오류:', error);
+      toast({
+        title: "삭제 실패",
+        description: error.message || "컨텍스트 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filteredEntries = (selectedProject === 'All Projects'
     ? entries
@@ -117,17 +156,43 @@ export const ListView = ({ entries, projects, onRefresh }: ListViewProps) => {
                     </Button>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hover:bg-destructive hover:text-destructive-foreground"
-                      onClick={() => {
-                        // TODO: 삭제 기능 구현
-                        console.log('Delete context:', entry.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-destructive hover:text-destructive-foreground"
+                          disabled={deletingId === entry.id}
+                        >
+                          {deletingId === entry.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>컨텍스트 삭제</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            정말로 "{entry.title}"을(를) 삭제하시겠습니까?
+                            <br />
+                            <span className="text-destructive font-medium">
+                              이 작업은 되돌릴 수 없습니다.
+                            </span>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteContext(entry.id, entry.title)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            삭제
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))
