@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ContextEntry } from '@/types/context';
+import { ContextEntry } from '@/services/context-api';
 import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -15,21 +15,30 @@ import { Badge } from '@/components/ui/badge';
 interface ListViewProps {
   entries: ContextEntry[];
   projects: string[];
+  onRefresh?: () => void;
 }
 
-export const ListView = ({ entries, projects }: ListViewProps) => {
+export const ListView = ({ entries, projects, onRefresh }: ListViewProps) => {
   const [selectedProject, setSelectedProject] = useState('All Projects');
 
   const filteredEntries = (selectedProject === 'All Projects'
     ? entries
-    : entries.filter(entry => entry.project === selectedProject)
-  ).sort((a, b) => b.endDate.getTime() - a.endDate.getTime()); // Sort by end date descending
+    : entries.filter(entry => entry.topics.includes(selectedProject))
+  ).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // Sort by created date descending
 
   return (
     <div className="h-full flex flex-col">
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-foreground mb-4">All Contexts</h2>
+        <h2 className="text-2xl font-semibold text-foreground mb-4">저장된 컨텍스트</h2>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant={selectedProject === 'All Projects' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedProject('All Projects')}
+            className="transition-all"
+          >
+            전체 ({entries.length})
+          </Button>
           {projects.map(project => (
             <Button
               key={project}
@@ -38,7 +47,7 @@ export const ListView = ({ entries, projects }: ListViewProps) => {
               onClick={() => setSelectedProject(project)}
               className="transition-all"
             >
-              {project}
+              {project} ({entries.filter(e => e.topics.includes(project)).length})
             </Button>
           ))}
         </div>
@@ -48,45 +57,81 @@ export const ListView = ({ entries, projects }: ListViewProps) => {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold">Title</TableHead>
-              <TableHead className="font-semibold">Project</TableHead>
-              <TableHead className="font-semibold">Date Range</TableHead>
-              <TableHead className="font-semibold">Summary</TableHead>
-              <TableHead className="font-semibold text-right">Link</TableHead>
+              <TableHead className="font-semibold">제목</TableHead>
+              <TableHead className="font-semibold">주제</TableHead>
+              <TableHead className="font-semibold">생성일</TableHead>
+              <TableHead className="font-semibold">요약</TableHead>
+              <TableHead className="font-semibold text-right">링크</TableHead>
+              <TableHead className="font-semibold text-right">삭제</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredEntries.map((entry) => (
-              <TableRow key={entry.id} className="hover:bg-muted/30 transition-colors">
-                <TableCell className="font-medium">{entry.title}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                    {entry.project}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{entry.dateRange}</TableCell>
-                <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                  {entry.summary}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="hover:bg-secondary hover:text-secondary-foreground"
-                  >
-                    <a
-                      href="https://www.lgresearch.ai/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Go to original context"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
+            {filteredEntries.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  {selectedProject === 'All Projects' 
+                    ? '저장된 컨텍스트가 없습니다' 
+                    : `"${selectedProject}" 주제의 컨텍스트가 없습니다`
+                  }
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredEntries.map((entry) => (
+                <TableRow key={entry.id} className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-medium">{entry.title}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {entry.topics.slice(0, 2).map((topic, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {topic}
+                        </Badge>
+                      ))}
+                      {entry.topics.length > 2 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{entry.topics.length - 2}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {new Date(entry.created_at).toLocaleDateString('ko-KR')}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                    {entry.summary}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      className="hover:bg-secondary hover:text-secondary-foreground"
+                    >
+                      <a
+                        href={entry.original_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="원본 링크로 이동"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => {
+                        // TODO: 삭제 기능 구현
+                        console.log('Delete context:', entry.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

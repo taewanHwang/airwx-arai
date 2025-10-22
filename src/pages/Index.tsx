@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Link2, Sparkles, ArrowRight, Loader2, AlertCircle, Trash2, Settings } from 'lucide-react';
+import { Link2, Sparkles, ArrowRight, Loader2, AlertCircle, Trash2, Settings, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -102,8 +102,18 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-accent/20 to-background p-4">
-      {/* 설정 버튼 (우측 상단) */}
-      <div className="fixed top-4 right-4 z-10">
+      {/* 상단 네비게이션 버튼들 */}
+      <div className="fixed top-4 right-4 z-10 flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 bg-background/80 backdrop-blur-sm"
+          onClick={() => navigate('/dashboard')}
+        >
+          <BarChart3 className="h-4 w-4" />
+          대시보드
+        </Button>
+        
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button

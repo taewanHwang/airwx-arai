@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ContextEntry } from '@/types/context';
+import { ContextEntry } from '@/services/context-api';
 import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,13 +52,15 @@ const getProjectColorGroup = (project: string): string[] => {
   return colorGroups[Math.abs(hash) % colorGroups.length];
 };
 
-// Get color for specific entry based on project and entry ID
+// Get color for specific entry based on topics and entry ID
 const getEntryColor = (entry: ContextEntry, isPast: boolean): string => {
   if (isPast) {
     return 'bg-gray-200 text-gray-600 hover:bg-gray-300 border-gray-400 opacity-70';
   }
   
-  const colorGroup = getProjectColorGroup(entry.project);
+  // Use first topic as project name for color consistency
+  const project = entry.topics?.[0] || 'Default';
+  const colorGroup = getProjectColorGroup(project);
   
   // Hash entry ID to get consistent color within project group
   let hash = 0;
@@ -70,9 +72,9 @@ const getEntryColor = (entry: ContextEntry, isPast: boolean): string => {
 };
 
 export const CalendarView = ({ entries }: CalendarViewProps) => {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 0, 1)); // January 2025
+  const [currentDate, setCurrentDate] = useState(new Date()); // Current date
   const [selectedEntry, setSelectedEntry] = useState<ContextEntry | null>(null);
-  const today = new Date(2025, 0, 10); // January 10, 2025
+  const today = new Date();
   
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -99,12 +101,12 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
 
   const getEntriesForDay = (day: number) => {
     return entries.filter(entry => {
-      const entryDate = entry.startDate.getDate();
-      const entryMonth = entry.startDate.getMonth();
-      const entryYear = entry.startDate.getFullYear();
+      const entryDate = new Date(entry.created_at);
+      const entryDateDay = entryDate.getDate();
+      const entryMonth = entryDate.getMonth();
+      const entryYear = entryDate.getFullYear();
       
-      return (entryDate === day && entryMonth === month && entryYear === year) ||
-             (entry.startDate <= new Date(year, month, day) && entry.endDate >= new Date(year, month, day));
+      return entryDateDay === day && entryMonth === month && entryYear === year;
     });
   };
 
@@ -156,7 +158,7 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
                 <div className="text-sm font-medium text-foreground mb-1">{day}</div>
                 <div className="space-y-1">
                   {getEntriesForDay(day).slice(0, 2).map(entry => {
-                    const isPast = entry.endDate < today;
+                    const isPast = new Date(entry.created_at) < today;
                     return (
                       <div
                         key={`${entry.id}-${day}`}
@@ -187,23 +189,27 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Project</label>
-              <div className="mt-1">
-                <Badge variant="secondary" className="bg-accent text-accent-foreground">
-                  {selectedEntry?.project}
-                </Badge>
+              <label className="text-sm font-medium text-muted-foreground">주제</label>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {selectedEntry?.topics.map((topic, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {topic}
+                  </Badge>
+                ))}
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Date Range</label>
-              <p className="mt-1 text-foreground">{selectedEntry?.dateRange}</p>
+              <label className="text-sm font-medium text-muted-foreground">생성일</label>
+              <p className="mt-1 text-foreground">
+                {selectedEntry && new Date(selectedEntry.created_at).toLocaleString('ko-KR')}
+              </p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Summary</label>
-              <p className="mt-1 text-foreground">{selectedEntry?.summary}</p>
+              <label className="text-sm font-medium text-muted-foreground">요약</label>
+              <p className="mt-1 text-foreground leading-relaxed">{selectedEntry?.summary}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Link</label>
+              <label className="text-sm font-medium text-muted-foreground">원본 링크</label>
               <div className="mt-1">
                 <Button
                   variant="outline"
@@ -212,12 +218,12 @@ export const CalendarView = ({ entries }: CalendarViewProps) => {
                   className="gap-2"
                 >
                   <a
-                    href="https://www.lgresearch.ai/"
+                    href={selectedEntry?.original_url}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    Open Original
+                    원본 보기
                   </a>
                 </Button>
               </div>
