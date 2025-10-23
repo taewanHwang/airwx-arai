@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ContextEntry, deleteContext } from '@/services/context-api';
+import { ContextEntry } from '@/types/context';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, ExternalLink, Trash2, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -11,21 +10,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 interface CalendarViewProps {
   entries: ContextEntry[];
-  onRefresh?: () => void;
 }
 
 // Generate consistent color tones for projects
@@ -65,15 +52,13 @@ const getProjectColorGroup = (project: string): string[] => {
   return colorGroups[Math.abs(hash) % colorGroups.length];
 };
 
-// Get color for specific entry based on topics and entry ID
+// Get color for specific entry based on project and entry ID
 const getEntryColor = (entry: ContextEntry, isPast: boolean): string => {
   if (isPast) {
     return 'bg-gray-200 text-gray-600 hover:bg-gray-300 border-gray-400 opacity-70';
   }
   
-  // Use first topic as project name for color consistency
-  const project = entry.topics?.[0] || 'Default';
-  const colorGroup = getProjectColorGroup(project);
+  const colorGroup = getProjectColorGroup(entry.project);
   
   // Hash entry ID to get consistent color within project group
   let hash = 0;
@@ -84,40 +69,10 @@ const getEntryColor = (entry: ContextEntry, isPast: boolean): string => {
   return colorGroup[index];
 };
 
-export const CalendarView = ({ entries, onRefresh }: CalendarViewProps) => {
-  const [currentDate, setCurrentDate] = useState(new Date()); // Current date
+export const CalendarView = ({ entries }: CalendarViewProps) => {
+  const [currentDate, setCurrentDate] = useState(new Date(2025, 0, 1)); // January 2025
   const [selectedEntry, setSelectedEntry] = useState<ContextEntry | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const { toast } = useToast();
-  const today = new Date();
-
-  const handleDeleteContext = async (id: string, title: string) => {
-    setDeletingId(id);
-    try {
-      await deleteContext(id);
-      toast({
-        title: "컨텍스트 삭제 완료",
-        description: `"${title}"이(가) 성공적으로 삭제되었습니다.`,
-      });
-      
-      // 다이얼로그 닫기
-      setSelectedEntry(null);
-      
-      // 데이터 새로고침
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error: any) {
-      console.error('삭제 오류:', error);
-      toast({
-        title: "삭제 실패",
-        description: error.message || "컨텍스트 삭제에 실패했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const today = new Date(2025, 0, 10); // January 10, 2025
   
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -144,12 +99,12 @@ export const CalendarView = ({ entries, onRefresh }: CalendarViewProps) => {
 
   const getEntriesForDay = (day: number) => {
     return entries.filter(entry => {
-      const entryDate = new Date(entry.created_at);
-      const entryDateDay = entryDate.getDate();
-      const entryMonth = entryDate.getMonth();
-      const entryYear = entryDate.getFullYear();
+      const entryDate = entry.startDate.getDate();
+      const entryMonth = entry.startDate.getMonth();
+      const entryYear = entry.startDate.getFullYear();
       
-      return entryDateDay === day && entryMonth === month && entryYear === year;
+      return (entryDate === day && entryMonth === month && entryYear === year) ||
+             (entry.startDate <= new Date(year, month, day) && entry.endDate >= new Date(year, month, day));
     });
   };
 
@@ -201,7 +156,7 @@ export const CalendarView = ({ entries, onRefresh }: CalendarViewProps) => {
                 <div className="text-sm font-medium text-foreground mb-1">{day}</div>
                 <div className="space-y-1">
                   {getEntriesForDay(day).slice(0, 2).map(entry => {
-                    const isPast = new Date(entry.created_at) < today;
+                    const isPast = entry.endDate < today;
                     return (
                       <div
                         key={`${entry.id}-${day}`}
@@ -232,28 +187,24 @@ export const CalendarView = ({ entries, onRefresh }: CalendarViewProps) => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground">주제</label>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {selectedEntry?.topics.map((topic, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {topic}
-                  </Badge>
-                ))}
+              <label className="text-sm font-medium text-muted-foreground">Project</label>
+              <div className="mt-1">
+                <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                  {selectedEntry?.project}
+                </Badge>
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">생성일</label>
-              <p className="mt-1 text-foreground">
-                {selectedEntry && new Date(selectedEntry.created_at).toLocaleString('ko-KR')}
-              </p>
+              <label className="text-sm font-medium text-muted-foreground">Date Range</label>
+              <p className="mt-1 text-foreground">{selectedEntry?.dateRange}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">요약</label>
-              <p className="mt-1 text-foreground leading-relaxed">{selectedEntry?.summary}</p>
+              <label className="text-sm font-medium text-muted-foreground">Summary</label>
+              <p className="mt-1 text-foreground">{selectedEntry?.summary}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">작업</label>
-              <div className="mt-1 flex gap-2">
+              <label className="text-sm font-medium text-muted-foreground">Link</label>
+              <div className="mt-1">
                 <Button
                   variant="outline"
                   size="sm"
@@ -261,53 +212,14 @@ export const CalendarView = ({ entries, onRefresh }: CalendarViewProps) => {
                   className="gap-2"
                 >
                   <a
-                    href={selectedEntry?.original_url}
+                    href="https://www.lgresearch.ai/"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    원본 보기
+                    Open Original
                   </a>
                 </Button>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      disabled={deletingId === selectedEntry?.id}
-                    >
-                      {deletingId === selectedEntry?.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                      삭제
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>컨텍스트 삭제</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        정말로 "{selectedEntry?.title}"을(를) 삭제하시겠습니까?
-                        <br />
-                        <span className="text-destructive font-medium">
-                          이 작업은 되돌릴 수 없습니다.
-                        </span>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>취소</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => selectedEntry && handleDeleteContext(selectedEntry.id, selectedEntry.title)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        삭제
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             </div>
           </div>
